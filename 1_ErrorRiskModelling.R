@@ -248,6 +248,8 @@ EstimateUrban = vector()
 EstimateWetland = vector()
 EstimateHedgerowlength = vector()
 EstimateEdge = vector()
+# Vector to store false negative rates
+FNrate = vector()
 # Merging new columns with datacheck
 data = cbind(datacheck, Barbar, Eptser, Myosp, Nyclei, Nycnoc, Pipkuh, Pipnat, Pippip, Plesp, Rhihip)
 # Coding each species column :
@@ -265,9 +267,10 @@ for (i in species) {
   print(i) ; start = Sys.time()
   datas = subset(data, subset = (data$simp_species == i) | (data[i] == "1"))
   datas2 = subset(datas, datas$manual_check == i)
+  datas2[,i] <- as.numeric(datas2[,i])
+  FNrate = c(FNrate, (sum(datas2[,i])/(length(datas2[,i]))))
     # Run models on species for which there are successes and errors
-  datas2[i] <- as.numeric(datas2[,i])
-  if ((sum(datas2[i]) != 0) & (sum(datas2[i]) != length(datas2[i])))
+  if ((sum(datas2[,i]) != 0) & (sum(datas2[,i]) != length(datas2[,i])))
   {
   # Models for each environmental variables
   mforest <- glmer(as.numeric(datas2[,i]) ~ scale(datas2$distforest) + (1|ID), family=binomial(link = logit), data = datas2)
@@ -305,7 +308,7 @@ for (i in species) {
 # Storing results in a dataframe
 FalseNegativesCheck = as.data.frame(cbind(Species = c(species = unique(species)), 
                                           EstimateForest, Pforest, EstimateUrban, Purban, EstimateWetland, 
-                                          Pwetland, EstimateHedgerowlength, Phedgerowlength, EstimateEdge,Pedge))
+                                          Pwetland, EstimateHedgerowlength, Phedgerowlength, EstimateEdge,Pedge, FNrate))
 
 # Saving the dataframe
 write.csv(FalseNegativesCheck, "./FalseNegativesCheck.csv", row.names=F)
