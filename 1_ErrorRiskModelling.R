@@ -3,8 +3,8 @@
 # confidence index provided by the software.Using the models, we can then determine the confidence
 # index threshold necessary to have the desired maximum error risk in the dataset (from 50% to 10%).
 # This allows to make an objective data selection for datasets too large to be fully checked. 
-# Then we checked if the automatic identification success is biased by the environnemental context
-# of the recording stations.
+# Then we checked if the automatic identification success and false negatives are biased by the 
+# environnemental context of the recording stations.
 #############################################################################################
 # By Kévin Barré, Julie Pauwels and Yves Bas
 #############################################################################################
@@ -222,3 +222,90 @@ ErrorRiskThresholds = as.data.frame(cbind(Species = c(simp_species = unique(data
 
 # Saving the dataframe
 write.csv(ErrorRiskThresholds, "./ErrorRiskThresholds.csv", row.names=F)
+
+## Test of the dependency of false negatives to the environmental context
+# Vector creations which will contain a binomial variable in relation with false negatives
+# 1: false negative of the species
+# 0: no false negative of the species
+Barbar = seq(0,0,length.out=nrow(datacheck))
+Eptser = seq(0,0,length.out=nrow(datacheck))
+Myosp = seq(0,0,length.out=nrow(datacheck))
+Nyclei = seq(0,0,length.out=nrow(datacheck))
+Nycnoc = seq(0,0,length.out=nrow(datacheck))
+Pipkuh = seq(0,0,length.out=nrow(datacheck))
+Pipnat = seq(0,0,length.out=nrow(datacheck))
+Pippip = seq(0,0,length.out=nrow(datacheck))
+Plesp = seq(0,0,length.out=nrow(datacheck))
+Rhihip = seq(0,0,length.out=nrow(datacheck))
+# Vector creations to store esitmates and p-values
+Pforest = vector()
+Purban = vector()
+Pwetland = vector()
+Phedgerowlength = vector()
+Pedge = vector()
+EstimateForest = vector()
+EstimateUrban = vector()
+EstimateWetland = vector()
+EstimateHedgerowlength = vector()
+EstimateEdge = vector()
+# Merging new columns with datacheck
+data = cbind(datacheck, Barbar, Eptser, Myosp, Nyclei, Nycnoc, Pipkuh, Pipnat, Pippip, Plesp, Rhihip)
+# Coding each species column :
+# 1: false negative of the species
+# 0: no false negative of the species
+for (i in 17:26) {
+  for (j in 1:nrow(data)) {
+    data[j,i] <- ifelse((colnames(data)[i] == data$manual_check[j]) & (colnames(data)[i] != data$simp_species[j]),"1","0")
+  }
+}
+# Subset to only select lines containing either a false negative or a true positive of the species
+# Then modelling of the probability to have a false negative according to environmental variables
+species = c("Barbar", "Eptser", "Myosp", "Nyclei", "Nycnoc", "Pipkuh", "Pipnat", "Pippip", "Plesp", "Rhihip")
+for (i in species) {
+  print(i) ; start = Sys.time()
+  datas = subset(data, subset = (data$simp_species == i) | (data[i] == "1"))
+  datas2 = subset(datas, datas$manual_check == i)
+    # Run models on species for which there are successes and errors
+  datas2[i] <- as.numeric(datas2[,i])
+  if ((sum(datas2[i]) != 0) & (sum(datas2[i]) != length(datas2[i])))
+  {
+  # Models for each environmental variables
+  mforest <- glmer(as.numeric(datas2[,i]) ~ scale(datas2$distforest) + (1|ID), family=binomial(link = logit), data = datas2)
+  murban <- glmer(as.numeric(datas2[,i]) ~ scale(datas2$disturban) + (1|ID), family=binomial(link = logit), data = datas2)
+  mwetland <- glmer(as.numeric(datas2[,i]) ~ scale(datas2$distwetland) + (1|ID), family=binomial(link = logit), data = datas2)
+  mhedgerow <- glmer(as.numeric(datas2[,i]) ~ scale(datas2$hedgerowlength) + (1|ID), family=binomial(link = logit), data = datas2)
+  medge <- glmer(as.numeric(datas2[,i]) ~ datas2$edgetype + (1|ID), family=binomial(link = logit), data = datas2)
+  # p-values and estimates storage
+  Pforest = c(Pforest, round(coef(summary(mforest))[2,'Pr(>|z|)'], 3))
+  Purban = c(Purban, round(coef(summary(murban))[2,'Pr(>|z|)'], 3))
+  Pwetland = c(Pwetland, round(coef(summary(mwetland))[2,'Pr(>|z|)'], 3))
+  Phedgerowlength = c(Phedgerowlength, round(coef(summary(mhedgerow))[2,'Pr(>|z|)'], 3))
+  Pedge = c(Pedge, round(coef(summary(medge))[2,'Pr(>|z|)'], 3))
+  EstimateForest = c(EstimateForest, round(summary(mforest)$coefficients[2], 3))
+  EstimateUrban = c(EstimateUrban, round(summary(murban)$coefficients[2], 3))
+  EstimateWetland = c(EstimateWetland, round(summary(mwetland)$coefficients[2], 3))
+  EstimateHedgerowlength = c(EstimateHedgerowlength, round(summary(mhedgerow)$coefficients[2], 3))
+  EstimateEdge = c(EstimateEdge, round(summary(medge)$coefficients[2], 3))
+  } 
+    # If there are only identification successes or only identification errors, models can't be run and NAs are implemented 
+    else {
+      Pforest = c(Pforest, "NA")
+      Purban = c(Purban, "NA")
+      Pwetland = c(Pwetland, "NA")
+      Phedgerowlength = c(Phedgerowlength, "NA")
+      Pedge = c(Pedge, "NA")
+      EstimateForest = c(EstimateForest, "NA")
+      EstimateUrban = c(EstimateUrban, "NA")
+      EstimateWetland = c(EstimateWetland, "NA")
+      EstimateHedgerowlength = c(EstimateHedgerowlength, "NA")
+      EstimateEdge = c(EstimateEdge, "NA")
+  }
+}
+
+# Storing results in a dataframe
+FalseNegativesCheck = as.data.frame(cbind(Species = c(species = unique(species)), 
+                                          EstimateForest, Pforest, EstimateUrban, Purban, EstimateWetland, 
+                                          Pwetland, EstimateHedgerowlength, Phedgerowlength, EstimateEdge,Pedge))
+
+# Saving the dataframe
+write.csv(FalseNegativesCheck, "./FalseNegativesCheck.csv", row.names=F)
