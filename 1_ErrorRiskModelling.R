@@ -226,7 +226,7 @@ write.csv(ErrorRiskThresholds, "./ErrorRiskThresholds.csv", row.names=F)
 ## Test of the dependency of false negatives to the environmental context
 # Vector creations which will contain a binomial variable in relation with false negatives
 # 1: false negative of the species
-# 0: no false negative of the species
+# 0: true positive of the species
 Barbar = seq(0,0,length.out=nrow(datacheck))
 Eptser = seq(0,0,length.out=nrow(datacheck))
 Myosp = seq(0,0,length.out=nrow(datacheck))
@@ -254,7 +254,7 @@ FNrate = vector()
 data = cbind(datacheck, Barbar, Eptser, Myosp, Nyclei, Nycnoc, Pipkuh, Pipnat, Pippip, Plesp, Rhihip)
 # Coding each species column :
 # 1: false negative of the species
-# 0: no false negative of the species
+# 0: true positive of the species
 for (i in 17:26) {
   for (j in 1:nrow(data)) {
     data[j,i] <- ifelse((colnames(data)[i] == data$manual_check[j]) & (colnames(data)[i] != data$simp_species[j]),"1","0")
